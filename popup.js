@@ -24,6 +24,10 @@
   const btnTestApi    = document.getElementById('btnTestApi');
   const btnClearCache  = document.getElementById('btnClearCache');
   const cacheInfoEl    = document.getElementById('cacheInfo');
+  const vendorFilter   = document.getElementById('vendorFilter');
+  const btnClearVendor = document.getElementById('btnClearVendor');
+  const vendorBadge    = document.getElementById('vendorBadge');
+  const vendorBadgeText = document.getElementById('vendorBadgeText');
   const logCount       = document.getElementById('logCount');
   const alertCount     = document.getElementById('alertCount');
   const logContainer   = document.getElementById('logContainer');
@@ -115,6 +119,7 @@
     setupListeners();
     setupTabs();
     restoreDates();
+    restoreVendorFilter();
     restoreTimer();
     render();
     await loadCacheStats();
@@ -194,6 +199,30 @@
     });
   }
 
+  function saveVendorFilter() {
+    chrome.storage.local.set({ filterVendor: vendorFilter.value.trim() });
+    renderVendorBadge();
+  }
+
+  function restoreVendorFilter() {
+    chrome.storage.local.get(['filterVendor'], (result) => {
+      if (result.filterVendor) {
+        vendorFilter.value = result.filterVendor;
+        renderVendorBadge();
+      }
+    });
+  }
+
+  function renderVendorBadge() {
+    const val = vendorFilter.value.trim();
+    if (val) {
+      vendorBadgeText.textContent = '👤 ' + val;
+      vendorBadge.classList.add('visible');
+    } else {
+      vendorBadge.classList.remove('visible');
+    }
+  }
+
   // --- Setup event listeners ---
   function setupListeners() {
     btnTestApi.addEventListener('click', onTestApi);
@@ -202,8 +231,13 @@
     btnStop.addEventListener('click', onStop);
     btnReport.addEventListener('click', onReport);
     btnClearCache.addEventListener('click', onClearCache);
+    btnClearVendor.addEventListener('click', () => {
+      vendorFilter.value = '';
+      saveVendorFilter();
+    });
     dateFrom.addEventListener('change', saveDates);
     dateTo.addEventListener('change', saveDates);
+    vendorFilter.addEventListener('input', saveVendorFilter);
 
     // Listen for messages from background
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -328,6 +362,8 @@
       return;
     }
 
+    const vendor = vendorFilter.value.trim();
+
     state.status = 'run';
     state.progress = 0;
     state.total = 0;
@@ -340,7 +376,7 @@
     startTimer();
     // Sinalizar ao background o timestamp de início do timer
     chrome.runtime.sendMessage({ type: 'TIMER_START' }).catch(() => {});
-    addLog('Iniciando raspagem...', 'info');
+    addLog('Iniciando raspagem' + (vendor ? ' · Vendedor: ' + vendor : '') + '...', 'info');
     render();
 
     try {
@@ -361,7 +397,8 @@
       await chrome.tabs.sendMessage(currentTabId, {
         action: 'START',
         dateFrom: dateFrom.value,
-        dateTo: dateTo.value
+        dateTo: dateTo.value,
+        vendorFilter: vendor
       });
     } catch (e) {
       console.error(PREFIX, 'Erro ao enviar START:', e);

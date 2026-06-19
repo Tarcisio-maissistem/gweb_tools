@@ -1,4 +1,4 @@
-﻿/**
+/**
  * content.js - Content Script injetado na pagina GDOOR Web
  *
  * ESTRATEGIA CENTRAL:
@@ -59,6 +59,7 @@
     totalRowsSeen: 0,
     dateFrom: '',
     dateTo: '',
+    vendorFilter: '',
     lastApiResponse: null,
     // Cache stats
     cacheStats: {
@@ -1157,6 +1158,22 @@
     return true;
   }
 
+  /**
+   * Verifica se o vendedor do pedido corresponde ao filtro digitado.
+   * Comparacao case-insensitive e parcial (contains).
+   * Se nenhum filtro definido, retorna true (todos os vendedores).
+   */
+  function matchesVendorFilter(vendedor) {
+    if (!appState.vendorFilter) return true; // sem filtro = todos
+    if (!vendedor) return false; // filtro definido mas pedido sem vendedor
+    // Normaliza acentos (NFD) e converte para minúsculo para comparação robusta
+    // Ex: "JOÃO" vira "joao", "João Silveira" vira "joao silveira"
+    function normalize(str) {
+      return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    }
+    return normalize(vendedor).indexOf(normalize(appState.vendorFilter)) !== -1;
+  }
+
   // =====================================================================
   // PROCESSAMENTO PRINCIPAL
   // =====================================================================
@@ -1223,6 +1240,13 @@
 
         // Concluido no cache -> verifica data de conclusao
         if (isDataConclusaoNoPeriodo(cached.data_conclusao)) {
+          // Aplica filtro de vendedor
+          if (!matchesVendorFilter(cached.vendedor)) {
+            appState.processedIds.add(basic.orderNum);
+            auditLog(basic.orderNum, 'FILTRADO_VENDEDOR', 'Cache: vendedor="' + cached.vendedor + '" nao corresponde ao filtro "' + appState.vendorFilter + '"');
+            progress(appState.processedIds.size);
+            continue;
+          }
           appState.data.push(buildOrderFromCacheEntry(cached, basic.orderNum));
           appState.processedIds.add(basic.orderNum);
 
@@ -1335,6 +1359,14 @@
 
         // REGRA CENTRAL: filtro por data de conclusao
         if (isDataConclusaoNoPeriodo(viewData.dataConclusao)) {
+          // Aplica filtro de vendedor
+          if (!matchesVendorFilter(viewData.vendedor)) {
+            appState.processedIds.add(basic.orderNum);
+            auditLog(basic.orderNum, 'FILTRADO_VENDEDOR', 'DOM: vendedor="' + viewData.vendedor + '" nao corresponde ao filtro "' + appState.vendorFilter + '"');
+            log('Pedido ' + basic.orderNum + ' IGNORADO - vendedor "' + viewData.vendedor + '" nao corresponde ao filtro');
+            progress(appState.processedIds.size);
+            continue;
+          }
           appState.data.push(Object.assign({}, viewData, {
             _source: 'view_page',
             _internalId: internalId,
@@ -1772,9 +1804,14 @@
           if (!isConcluido) {
             appState.skippedNotDone++;
           } else if (isDataConclusaoNoPeriodo(cached.data_conclusao)) {
-            appState.data.push(buildOrderFromCacheEntry(cached, docNum));
-            auditLog(docNum, 'CACHE_HIT', 'Conclusao: ' + cached.data_conclusao + ' (cache)');
-            log('[' + (appState.data.length) + '] #' + docNum + ' CACHE HIT - ' + cached.data_conclusao, 'success');
+            // Aplica filtro de vendedor no cache hit (modo API)
+            if (matchesVendorFilter(cached.vendedor)) {
+              appState.data.push(buildOrderFromCacheEntry(cached, docNum));
+              auditLog(docNum, 'CACHE_HIT', 'Conclusao: ' + cached.data_conclusao + ' (cache)');
+              log('[' + (appState.data.length) + '] #' + docNum + ' CACHE HIT - ' + cached.data_conclusao, 'success');
+            } else {
+              auditLog(docNum, 'FILTRADO_VENDEDOR', 'Cache: vendedor="' + cached.vendedor + '"');
+            }
           } else {
             appState.discarded.push({ id: docNum, dataConclusao: cached.data_conclusao, valorTotal: cached.total, vendedor: cached.vendedor });
             auditLog(docNum, 'CACHE_HIT_FORA_PERIODO', 'Conclusao: ' + cached.data_conclusao);
@@ -1833,6 +1870,13 @@
           var orderAlerts = validateOrder(orderData);
 
           if (isDataConclusaoNoPeriodo(orderData.dataConclusao)) {
+            // Aplica filtro de vendedor (modo API)
+            if (!matchesVendorFilter(orderData.vendedor)) {
+              appState.processedIds.add(docNum);
+              auditLog(docNum, 'FILTRADO_VENDEDOR', 'API: vendedor="' + orderData.vendedor + '" nao corresponde ao filtro "' + appState.vendorFilter + '"');
+              progress(appState.processedIds.size);
+              return;
+            }
             appState.data.push(Object.assign({}, orderData, {
               _source: 'api_direct',
               _internalId: String(r.item.id),
@@ -1971,12 +2015,13 @@
   // FLUXO PRINCIPAL
   // =====================================================================
 
-  async function startScraping(dateFrom, dateTo) {
+  async function startScraping(dateFrom, dateTo, vendorFilter) {
     appState.running = true;
     appState.stop = false;
     appState.paused = false;
     appState.dateFrom = dateFrom;
     appState.dateTo = dateTo;
+    appState.vendorFilter = vendorFilter || '';
 
     // Checkpoint existente?
     var checkpoint = loadCheckpoint();
@@ -2005,6 +2050,9 @@
 
     updateStatus('run');
     log('Raspagem iniciada - Periodo de conclusao: ' + formatDateBR(dateFrom) + ' a ' + formatDateBR(dateTo));
+    if (appState.vendorFilter) {
+      log('Filtro de vendedor ativo: "' + appState.vendorFilter + '"', 'warn');
+    }
     log('Regra: SOMENTE pedidos CONCLUIDOS com "Alterado em" no periodo');
 
     // Info do cache
@@ -2150,7 +2198,7 @@
 
     switch (msg.action) {
       case 'START':
-        if (!appState.running) startScraping(msg.dateFrom, msg.dateTo);
+        if (!appState.running) startScraping(msg.dateFrom, msg.dateTo, msg.vendorFilter || '');
         sendResponse({ ok: true });
         break;
 

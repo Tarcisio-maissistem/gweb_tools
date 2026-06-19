@@ -191,6 +191,103 @@
       line-height: 1.5;
     }
 
+    /* ── Vendor Filter ── */
+    .vendor-section {
+      padding: 10px 20px 12px;
+      border-bottom: 1px solid var(--bord);
+      background: var(--bg2);
+    }
+
+    .vendor-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .vendor-input-wrap {
+      position: relative;
+      flex: 1;
+    }
+
+    .vendor-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    .vendor-input-wrap input[type="text"] {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--bord2);
+      border-radius: 8px;
+      color: var(--s1);
+      padding: 8px 10px 8px 30px;
+      font-size: 12px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .vendor-input-wrap input[type="text"]:focus {
+      border-color: var(--acc);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+    }
+
+    .vendor-input-wrap input[type="text"]::placeholder {
+      color: var(--s3);
+      font-style: italic;
+    }
+
+    .btn-clear-vendor {
+      background: none;
+      border: 1px solid var(--bord2);
+      border-radius: 6px;
+      color: var(--s3);
+      font-size: 11px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      transition: all .15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-clear-vendor:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    .vendor-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 20px;
+      padding: 2px 8px;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--acc2);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+      display: none;
+    }
+
+    .vendor-badge.visible { display: inline-flex; }
+
+    .vendor-badge-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--acc);
+      animation: pulse 2s infinite;
+    }
+
     /* ── Progress ── */
     .progress-section {
       padding: 10px 20px;
@@ -549,6 +646,22 @@
       Pedidos <strong style="color:var(--green)">Concluídos</strong> com "Alterado em" no período.
       Range expandido em 1 mês automaticamente.
     </p>
+  </div>
+
+  <!-- Vendor Filter -->
+  <div class="vendor-section">
+    <div class="filter-label">Filtrar por vendedor <span style="color:var(--s3);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></div>
+    <div class="vendor-row">
+      <div class="vendor-input-wrap">
+        <span class="vendor-icon">👤</span>
+        <input type="text" id="vendorFilter" placeholder="Ex: João Silva — deixe vazio para todos" autocomplete="off">
+      </div>
+      <button id="btnClearVendor" class="btn-clear-vendor" title="Limpar filtro de vendedor">✕ Limpar</button>
+    </div>
+    <div class="vendor-badge" id="vendorBadge">
+      <span class="vendor-badge-dot"></span>
+      <span id="vendorBadgeText">Filtrando vendedor</span>
+    </div>
   </div>
 
   <!-- Progress -->
