@@ -2203,6 +2203,17 @@
     var names = [];
     var list = resp.data || resp.users || resp.people || resp.sellers || resp;
     if (!Array.isArray(list)) return names;
+
+    if (list.length > 0) {
+      var first = list[0];
+      var info = {};
+      var keys = ['type', 'classification', 'role', 'seller', 'is_seller', 'vendedor', 'profile', 'tipo', 'roles', 'group', 'grupo', 'status'];
+      keys.forEach(function (k) {
+        if (first[k] !== undefined) info[k] = first[k];
+      });
+      log('DEBUG SCHEMA: Keys=' + Object.keys(first).join(',') + ' | Values=' + JSON.stringify(info), 'info');
+    }
+
     list.forEach(function (item) {
       var name = item.name || item.nome || item.username || item.login
                || item.full_name || item.display_name || '';
