@@ -2205,13 +2205,46 @@
     if (!Array.isArray(list)) return names;
 
     if (list.length > 0) {
-      var first = list[0];
-      var info = {};
-      var keys = ['type', 'classification', 'role', 'seller', 'is_seller', 'vendedor', 'profile', 'tipo', 'roles', 'group', 'grupo', 'status'];
-      keys.forEach(function (k) {
-        if (first[k] !== undefined) info[k] = first[k];
+      log('DEBUG FIRST ITEM JSON: ' + JSON.stringify(list[0]), 'info');
+      
+      list.forEach(function (item) {
+        var matchedKeys = [];
+        Object.keys(item).forEach(function (k) {
+          var val = item[k];
+          if (typeof val === 'string' && (val.toLowerCase().indexOf('vendedor') !== -1 || val.toLowerCase().indexOf('seller') !== -1)) {
+            matchedKeys.push(k + ' (string): "' + val + '"');
+          } else if (typeof val === 'boolean' && (k.toLowerCase().indexOf('vendedor') !== -1 || k.toLowerCase().indexOf('seller') !== -1)) {
+            matchedKeys.push(k + ' (boolean): ' + val);
+          } else if (Array.isArray(val)) {
+            val.forEach(function (subVal) {
+              if (typeof subVal === 'string' && (subVal.toLowerCase().indexOf('vendedor') !== -1 || subVal.toLowerCase().indexOf('seller') !== -1)) {
+                matchedKeys.push(k + ' (array string): "' + subVal + '"');
+              } else if (subVal && typeof subVal === 'object') {
+                Object.keys(subVal).forEach(function (sk) {
+                  var sval = subVal[sk];
+                  if (typeof sval === 'string' && (sval.toLowerCase().indexOf('vendedor') !== -1 || sval.toLowerCase().indexOf('seller') !== -1)) {
+                    matchedKeys.push(k + '.' + sk + ' (array obj string): "' + sval + '"');
+                  } else if (typeof sval === 'boolean' && (sk.toLowerCase().indexOf('vendedor') !== -1 || sk.toLowerCase().indexOf('seller') !== -1)) {
+                    matchedKeys.push(k + '.' + sk + ' (array obj boolean): ' + sval);
+                  }
+                });
+              }
+            });
+          } else if (val && typeof val === 'object') {
+            Object.keys(val).forEach(function (sk) {
+              var sval = val[sk];
+              if (typeof sval === 'string' && (sval.toLowerCase().indexOf('vendedor') !== -1 || sval.toLowerCase().indexOf('seller') !== -1)) {
+                matchedKeys.push(k + '.' + sk + ' (obj string): "' + sval + '"');
+              } else if (typeof sval === 'boolean' && (sk.toLowerCase().indexOf('vendedor') !== -1 || sk.toLowerCase().indexOf('seller') !== -1)) {
+                matchedKeys.push(k + '.' + sk + ' (obj boolean): ' + sval);
+              }
+            });
+          }
+        });
+        if (matchedKeys.length > 0) {
+          log('DEBUG MATCH FOR ' + (item.name || item.nome || 'unnamed') + ': ' + matchedKeys.join(' | '), 'info');
+        }
       });
-      log('DEBUG SCHEMA: Keys=' + Object.keys(first).join(',') + ' | Values=' + JSON.stringify(info), 'info');
     }
 
     list.forEach(function (item) {
