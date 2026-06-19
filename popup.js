@@ -24,10 +24,14 @@
   const btnTestApi    = document.getElementById('btnTestApi');
   const btnClearCache  = document.getElementById('btnClearCache');
   const cacheInfoEl    = document.getElementById('cacheInfo');
-  const vendorFilter   = document.getElementById('vendorFilter');
-  const btnClearVendor = document.getElementById('btnClearVendor');
-  const vendorBadge    = document.getElementById('vendorBadge');
-  const vendorBadgeText = document.getElementById('vendorBadgeText');
+  const btnReloadVendors = document.getElementById('btnReloadVendors');
+  const vendorIdle      = document.getElementById('vendorIdle');
+  const btnLoadVendors   = document.getElementById('btnLoadVendors');
+  const vendorLoading    = document.getElementById('vendorLoading');
+  const vendorError      = document.getElementById('vendorError');
+  const vendorErrorMsg   = document.getElementById('vendorErrorMsg');
+  const btnVendorRetry   = document.getElementById('btnVendorRetry');
+  const vendorList       = document.getElementById('vendorList');
   const logCount       = document.getElementById('logCount');
   const alertCount     = document.getElementById('alertCount');
   const logContainer   = document.getElementById('logContainer');
@@ -58,6 +62,9 @@
     audit: [],
     discarded: []
   };
+
+  let loadedVendors = [];
+  let selectedVendor = '';
 
   function formatElapsed(ms) {
     const totalSec = Math.floor(ms / 1000);
@@ -199,28 +206,122 @@
     });
   }
 
-  function saveVendorFilter() {
-    chrome.storage.local.set({ filterVendor: vendorFilter.value.trim() });
-    renderVendorBadge();
-  }
-
-  function restoreVendorFilter() {
-    chrome.storage.local.get(['filterVendor'], (result) => {
-      if (result.filterVendor) {
-        vendorFilter.value = result.filterVendor;
-        renderVendorBadge();
+  function selectVendor(vendorName) {
+    selectedVendor = vendorName;
+    chrome.storage.local.set({ filterVendor: vendorName });
+    document.querySelectorAll('.vendor-item').forEach(el => {
+      const nameEl = el.querySelector('.vendor-item-name');
+      const isAll = nameEl && nameEl.textContent === 'Todos os vendedores';
+      if (isAll) {
+        el.classList.toggle('selected', vendorName === '');
+      } else if (nameEl) {
+        el.classList.toggle('selected', nameEl.textContent === vendorName);
       }
     });
   }
 
-  function renderVendorBadge() {
-    const val = vendorFilter.value.trim();
-    if (val) {
-      vendorBadgeText.textContent = '👤 ' + val;
-      vendorBadge.classList.add('visible');
-    } else {
-      vendorBadge.classList.remove('visible');
+  function renderVendorList() {
+    vendorList.innerHTML = '';
+    
+    // Card "Todos os vendedores"
+    const allItem = document.createElement('div');
+    allItem.className = 'vendor-item' + (selectedVendor === '' ? ' selected' : '');
+    allItem.innerHTML = `
+      <span class="vendor-item-icon">👥</span>
+      <span class="vendor-item-name">Todos os vendedores</span>
+      <span class="vendor-item-check">✓</span>
+    `;
+    allItem.addEventListener('click', () => {
+      selectVendor('');
+    });
+    vendorList.appendChild(allItem);
+    
+    // Lista ordenada dos vendedores carregados
+    loadedVendors.forEach(vendorName => {
+      const item = document.createElement('div');
+      item.className = 'vendor-item' + (selectedVendor === vendorName ? ' selected' : '');
+      item.innerHTML = `
+        <span class="vendor-item-icon">👤</span>
+        <span class="vendor-item-name">${escapeHtml(vendorName)}</span>
+        <span class="vendor-item-check">✓</span>
+      `;
+      item.addEventListener('click', () => {
+        selectVendor(vendorName);
+      });
+      vendorList.appendChild(item);
+    });
+  }
+
+  async function loadVendorsFromApi() {
+    if (!currentTabId) return;
+    
+    vendorIdle.classList.add('hidden');
+    vendorError.classList.remove('visible');
+    vendorList.classList.remove('visible');
+    vendorLoading.classList.add('visible');
+    btnReloadVendors.classList.remove('visible');
+    render();
+    
+    try {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: currentTabId },
+          files: ['src/comissao-content.js']
+        });
+      } catch (e) { /* já injetado */ }
+      
+      await new Promise(r => setTimeout(r, 500));
+      
+      const resp = await chrome.tabs.sendMessage(currentTabId, {
+        action: 'GET_VENDORS'
+      });
+      
+      if (resp && resp.ok && Array.isArray(resp.vendors)) {
+        loadedVendors = resp.vendors;
+        chrome.storage.local.set({ loadedVendors: loadedVendors });
+        renderVendorList();
+        
+        vendorLoading.classList.remove('visible');
+        vendorList.classList.add('visible');
+        btnReloadVendors.classList.add('visible');
+      } else {
+        throw new Error(resp ? resp.error : 'Resposta inválida do sistema');
+      }
+    } catch (err) {
+      console.error(PREFIX, 'Erro ao carregar vendedores:', err);
+      vendorLoading.classList.remove('visible');
+      vendorErrorMsg.textContent = '⚠️ Não foi possível carregar vendedores: ' + (err.message || 'Erro desconhecido');
+      vendorError.classList.add('visible');
+      btnReloadVendors.classList.remove('visible');
     }
+    render();
+  }
+
+  function restoreVendorFilter() {
+    chrome.storage.local.get(['filterVendor', 'loadedVendors'], (result) => {
+      if (result.filterVendor !== undefined) {
+        selectedVendor = result.filterVendor;
+      } else {
+        selectedVendor = '';
+      }
+      
+      if (Array.isArray(result.loadedVendors) && result.loadedVendors.length > 0) {
+        loadedVendors = result.loadedVendors;
+        renderVendorList();
+        vendorIdle.classList.add('hidden');
+        vendorLoading.classList.remove('visible');
+        vendorError.classList.remove('visible');
+        vendorList.classList.add('visible');
+        btnReloadVendors.classList.add('visible');
+      } else {
+        vendorIdle.classList.remove('hidden');
+        vendorLoading.classList.remove('visible');
+        vendorError.classList.remove('visible');
+        vendorList.classList.remove('visible');
+        btnReloadVendors.classList.remove('visible');
+      }
+      render();
+    });
   }
 
   // --- Setup event listeners ---
@@ -231,13 +332,11 @@
     btnStop.addEventListener('click', onStop);
     btnReport.addEventListener('click', onReport);
     btnClearCache.addEventListener('click', onClearCache);
-    btnClearVendor.addEventListener('click', () => {
-      vendorFilter.value = '';
-      saveVendorFilter();
-    });
+    btnLoadVendors.addEventListener('click', loadVendorsFromApi);
+    btnReloadVendors.addEventListener('click', loadVendorsFromApi);
+    btnVendorRetry.addEventListener('click', loadVendorsFromApi);
     dateFrom.addEventListener('change', saveDates);
     dateTo.addEventListener('change', saveDates);
-    vendorFilter.addEventListener('input', saveVendorFilter);
 
     // Listen for messages from background
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -362,7 +461,7 @@
       return;
     }
 
-    const vendor = vendorFilter.value.trim();
+    const vendor = selectedVendor;
 
     state.status = 'run';
     state.progress = 0;
@@ -547,8 +646,9 @@
     const isRunning = state.status === 'run' || state.paused;
     const isDone = state.status === 'done';
     const hasData = state.data.length > 0;
+    const hasVendors = loadedVendors.length > 0;
 
-    btnStart.disabled = isRunning;
+    btnStart.disabled = isRunning || !hasVendors;
     btnTestApi.disabled = isRunning;
     btnPause.disabled = !isRunning;
     btnStop.disabled = !isRunning;
@@ -557,7 +657,7 @@
     btnPause.textContent = state.paused ? '▶ Retomar' : '⏸ Pausar';
 
     if (isDone) {
-      btnStart.disabled = false;
+      btnStart.disabled = !hasVendors;
       btnTestApi.disabled = false;
       btnPause.disabled = true;
       btnStop.disabled = true;

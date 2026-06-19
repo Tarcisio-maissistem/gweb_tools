@@ -191,102 +191,160 @@
       line-height: 1.5;
     }
 
-    /* ── Vendor Filter ── */
+    /* ── Vendor Selector ── */
     .vendor-section {
       padding: 10px 20px 12px;
       border-bottom: 1px solid var(--bord);
       background: var(--bg2);
     }
 
-    .vendor-row {
+    .vendor-header {
       display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .btn-reload-vendors {
+      background: none;
+      border: 1px solid var(--bord2);
+      border-radius: 5px;
+      color: var(--s3);
+      font-size: 10px;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      transition: all .15s;
+      display: none;
+    }
+    .btn-reload-vendors:hover { border-color: var(--acc); color: var(--acc2); }
+    .btn-reload-vendors.visible { display: inline-block; }
+
+    /* Estado idle: botao buscar */
+    .vendor-idle {
+      display: flex;
+      justify-content: center;
+      padding: 4px 0 2px;
+    }
+
+    .btn-load-vendors {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(99,102,241,.1);
+      border: 1px solid rgba(99,102,241,.3);
+      border-radius: 8px;
+      color: var(--acc2);
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 8px 20px;
+      cursor: pointer;
+      transition: all .18s;
+      letter-spacing: 0.2px;
+    }
+    .btn-load-vendors:hover {
+      background: rgba(99,102,241,.2);
+      border-color: var(--acc);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(99,102,241,.2);
+    }
+
+    /* Estado loading */
+    .vendor-loading {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      color: var(--s3);
+      font-size: 11px;
+    }
+    .vendor-loading.visible { display: flex; }
+    .vendor-idle.hidden { display: none; }
+
+    .vendor-spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--bord2);
+      border-top-color: var(--acc);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Estado error */
+    .vendor-error {
+      display: none;
+      font-size: 11px;
+      color: var(--red);
+      background: rgba(248,113,113,.07);
+      border: 1px solid rgba(248,113,113,.25);
+      border-radius: 8px;
+      padding: 8px 12px;
       gap: 8px;
       align-items: center;
     }
-
-    .vendor-input-wrap {
-      position: relative;
-      flex: 1;
-    }
-
-    .vendor-icon {
-      position: absolute;
-      left: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 13px;
-      pointer-events: none;
-      opacity: 0.6;
-    }
-
-    .vendor-input-wrap input[type="text"] {
-      width: 100%;
-      background: var(--bg3);
-      border: 1px solid var(--bord2);
-      border-radius: 8px;
-      color: var(--s1);
-      padding: 8px 10px 8px 30px;
-      font-size: 12px;
-      font-family: 'Inter', sans-serif;
-      outline: none;
-      transition: border-color .2s, box-shadow .2s;
-    }
-
-    .vendor-input-wrap input[type="text"]:focus {
-      border-color: var(--acc);
-      box-shadow: 0 0 0 3px rgba(99,102,241,.15);
-    }
-
-    .vendor-input-wrap input[type="text"]::placeholder {
-      color: var(--s3);
-      font-style: italic;
-    }
-
-    .btn-clear-vendor {
+    .vendor-error.visible { display: flex; }
+    .btn-vendor-retry {
       background: none;
-      border: 1px solid var(--bord2);
-      border-radius: 6px;
-      color: var(--s3);
-      font-size: 11px;
-      padding: 6px 10px;
+      border: 1px solid rgba(248,113,113,.4);
+      border-radius: 5px;
+      color: var(--red);
+      font-size: 10px;
+      padding: 3px 8px;
       cursor: pointer;
       font-family: 'Inter', sans-serif;
-      font-weight: 500;
-      transition: all .15s;
       white-space: nowrap;
       flex-shrink: 0;
     }
+    .btn-vendor-retry:hover { background: rgba(248,113,113,.15); }
 
-    .btn-clear-vendor:hover {
-      border-color: var(--red);
-      color: var(--red);
-    }
-
-    .vendor-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(99,102,241,0.15);
-      border: 1px solid rgba(99,102,241,0.3);
-      border-radius: 20px;
-      padding: 2px 8px;
-      font-size: 9px;
-      font-weight: 700;
-      color: var(--acc2);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-top: 6px;
+    /* Lista de vendedores */
+    .vendor-list {
       display: none;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 140px;
+      overflow-y: auto;
     }
+    .vendor-list.visible { display: flex; }
+    .vendor-list::-webkit-scrollbar { width: 3px; }
+    .vendor-list::-webkit-scrollbar-track { background: transparent; }
+    .vendor-list::-webkit-scrollbar-thumb { background: var(--bord2); border-radius: 2px; }
 
-    .vendor-badge.visible { display: inline-flex; }
-
-    .vendor-badge-dot {
-      width: 5px; height: 5px;
-      border-radius: 50%;
-      background: var(--acc);
-      animation: pulse 2s infinite;
+    .vendor-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all .15s;
+      font-size: 11px;
+      color: var(--s2);
+      background: var(--bg3);
+      user-select: none;
     }
+    .vendor-item:hover {
+      border-color: var(--bord2);
+      color: var(--s1);
+    }
+    .vendor-item.selected {
+      background: rgba(99,102,241,.12);
+      border-color: rgba(99,102,241,.4);
+      color: var(--acc2);
+      font-weight: 600;
+    }
+    .vendor-item-icon { font-size: 12px; flex-shrink: 0; opacity: 0.7; }
+    .vendor-item-name { flex: 1; }
+    .vendor-item-check {
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .vendor-item.selected .vendor-item-check { opacity: 1; }
 
     /* ── Progress ── */
     .progress-section {
@@ -648,20 +706,35 @@
     </p>
   </div>
 
-  <!-- Vendor Filter -->
+  <!-- Vendor Selector -->
   <div class="vendor-section">
-    <div class="filter-label">Filtrar por vendedor <span style="color:var(--s3);font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></div>
-    <div class="vendor-row">
-      <div class="vendor-input-wrap">
-        <span class="vendor-icon">👤</span>
-        <input type="text" id="vendorFilter" placeholder="Ex: João Silva — deixe vazio para todos" autocomplete="off">
-      </div>
-      <button id="btnClearVendor" class="btn-clear-vendor" title="Limpar filtro de vendedor">✕ Limpar</button>
+    <div class="vendor-header">
+      <div class="filter-label" style="margin-bottom:0">Vendedor</div>
+      <button id="btnReloadVendors" class="btn-reload-vendors" title="Recarregar lista de vendedores">🔄 Recarregar</button>
     </div>
-    <div class="vendor-badge" id="vendorBadge">
-      <span class="vendor-badge-dot"></span>
-      <span id="vendorBadgeText">Filtrando vendedor</span>
+
+    <!-- idle: botão buscar -->
+    <div class="vendor-idle" id="vendorIdle">
+      <button class="btn-load-vendors" id="btnLoadVendors">
+        <span>👥</span>
+        <span>Buscar Vendedores do Sistema</span>
+      </button>
     </div>
+
+    <!-- loading -->
+    <div class="vendor-loading" id="vendorLoading">
+      <div class="vendor-spinner"></div>
+      <span>Buscando vendedores do GDOOR...</span>
+    </div>
+
+    <!-- error -->
+    <div class="vendor-error" id="vendorError">
+      <span id="vendorErrorMsg">⚠️ Não foi possível carregar vendedores.</span>
+      <button class="btn-vendor-retry" id="btnVendorRetry">🔄 Tentar novamente</button>
+    </div>
+
+    <!-- lista de vendedores -->
+    <div class="vendor-list" id="vendorList"></div>
   </div>
 
   <!-- Progress -->

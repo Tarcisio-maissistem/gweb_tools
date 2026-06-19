@@ -2191,6 +2191,114 @@
   }
 
   // =====================================================================
+  // BUSCA DE VENDEDORES DO SISTEMA
+  // Tenta multiplos endpoints em cascata para obter a lista real de vendedores.
+  // =====================================================================
+
+  /**
+   * Tenta extrair nomes de vendedores de uma resposta da API.
+   * Suporta multiplos formatos de resposta do GDOOR.
+   */
+  function extractNamesFromApiResp(resp) {
+    var names = [];
+    var list = resp.data || resp.users || resp.people || resp.sellers || resp;
+    if (!Array.isArray(list)) return names;
+    list.forEach(function (item) {
+      var name = item.name || item.nome || item.username || item.login
+               || item.full_name || item.display_name || '';
+      if (name && name.trim()) names.push(name.trim());
+    });
+    return names;
+  }
+
+  /**
+   * Busca lista de vendedores do GDOOR Web via API.
+   * Estrategias em cascata:
+   *   1. GET /v1/users?limit=200         (usuarios do sistema)
+   *   2. GET /v1/people?filter.type=S&limit=200  (tipo Seller)
+   *   3. GET /v1/people?limit=200        (todas as pessoas)
+   *   4. Fallback: varre 1a pagina de pedidos recentes e coleta created_by unicos
+   */
+  async function fetchVendorList() {
+    var endpoints = [
+      '/v1/users?limit=200',
+      '/v1/people?filter.type=S&limit=200',
+      '/v1/people?limit=200'
+    ];
+
+    for (var i = 0; i < endpoints.length; i++) {
+      try {
+        var resp = await apiFetch(endpoints[i]);
+        var names = extractNamesFromApiResp(resp);
+        if (names.length > 0) {
+          names = deduplicateAndSort(names);
+          log('Vendedores carregados via ' + endpoints[i] + ': ' + names.length + ' encontrados');
+          return { ok: true, vendors: names, source: endpoints[i] };
+        }
+      } catch (e) {
+        // Tenta proximo endpoint
+        console.warn(PREFIX, 'Endpoint ' + endpoints[i] + ' falhou:', e.message);
+      }
+    }
+
+    // FALLBACK: varre os pedidos mais recentes para coletar vendedores unicos
+    log('Endpoints de pessoas indisponiveis — varrendo pedidos recentes para coletar vendedores...', 'warn');
+    try {
+      var today = new Date();
+      var past = new Date(today);
+      past.setMonth(past.getMonth() - 3); // ultimos 3 meses
+      var dateStr = past.getFullYear() + '-' + String(past.getMonth() + 1).padStart(2, '0') + '-' + String(past.getDate()).padStart(2, '0');
+      var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+      var ordersResp = await apiFetch('/v1/movements/orders?limit=200&filter.status=true&filter.start=' + dateStr + '&filter.end=' + todayStr + '&page=1');
+      var orders = ordersResp.data || [];
+      var nameSet = {};
+
+      orders.forEach(function (o) {
+        // created_by como vendedor principal
+        if (o.created_by && o.created_by.trim()) nameSet[o.created_by.trim()] = true;
+        // seller nos itens (se a listagem expoe)
+        if (o.seller && o.seller.name) nameSet[o.seller.name.trim()] = true;
+      });
+
+      // Se listagem nao tem vendedor, tenta buscar 5 detalhes para coletar nomes
+      var fallbackNames = Object.keys(nameSet);
+      if (fallbackNames.length === 0 && orders.length > 0) {
+        var sample = orders.slice(0, Math.min(5, orders.length));
+        for (var s = 0; s < sample.length; s++) {
+          try {
+            var detail = await apiFetch('/v1/movements/orders/' + sample[s].id);
+            var od = extractOrderFromApiData(detail);
+            if (od.vendedor) nameSet[od.vendedor] = true;
+          } catch (e2) { /* ignora */ }
+        }
+        fallbackNames = Object.keys(nameSet);
+      }
+
+      if (fallbackNames.length > 0) {
+        fallbackNames = deduplicateAndSort(fallbackNames);
+        log('Vendedores coletados de pedidos recentes: ' + fallbackNames.length);
+        return { ok: true, vendors: fallbackNames, source: 'orders_scan' };
+      }
+    } catch (e) {
+      console.warn(PREFIX, 'Fallback de varredura de pedidos falhou:', e.message);
+    }
+
+    return { ok: false, vendors: [], error: 'Nao foi possivel carregar vendedores. Verifique se esta na pagina do GDOOR.' };
+  }
+
+  /** Remove duplicatas (case-insensitive) e ordena alfabeticamente */
+  function deduplicateAndSort(names) {
+    var seen = {};
+    var unique = [];
+    names.forEach(function (n) {
+      var key = n.toLowerCase();
+      if (!seen[key]) { seen[key] = true; unique.push(n); }
+    });
+    return unique.sort(function (a, b) { return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }); });
+  }
+
+  // =====================================================================
   // LISTENER DE MENSAGENS DO POPUP
   // =====================================================================
 
@@ -2238,6 +2346,14 @@
           sendResponse(result);
         }).catch(function (err) {
           sendResponse({ ok: false, error: err.message });
+        });
+        return true; // async sendResponse
+
+      case 'GET_VENDORS':
+        fetchVendorList().then(function (result) {
+          sendResponse(result);
+        }).catch(function (err) {
+          sendResponse({ ok: false, vendors: [], error: err.message });
         });
         return true; // async sendResponse
 

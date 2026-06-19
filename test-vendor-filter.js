@@ -345,6 +345,31 @@ section('SUITE 5 — Comunicação popup → content (mensagem START)');
   );
 }
 
+// ── SUITE 6: Deduplicação e ordenação ─────────────────────────────────────────
+section('SUITE 6 — Deduplicação e ordenação de vendedores');
+
+function deduplicateAndSort(names) {
+  var seen = {};
+  var unique = [];
+  names.forEach(function (n) {
+    var key = n.toLowerCase();
+    if (!seen[key]) { seen[key] = true; unique.push(n); }
+  });
+  return unique.sort(function (a, b) { return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }); });
+}
+
+{
+  const rawList = ['João Silva', 'joão silva', 'Maria Souza', 'Carlos Lima', 'carlos lima'];
+  const processed = deduplicateAndSort(rawList);
+  assert('Remove duplicatas case-insensitive', processed.length === 3);
+  assert('Ordena alfabeticamente (pt-BR)', 
+    processed[0] === 'Carlos Lima' && 
+    processed[1] === 'João Silva' && 
+    processed[2] === 'Maria Souza',
+    `Resultado real: [${processed.join(', ')}]`
+  );
+}
+
 // ─── RESULTADO FINAL ──────────────────────────────────────────────────────────
 console.log('\n' + '─'.repeat(55));
 const total = passed + failed;
