@@ -1,0 +1,16 @@
+/* styles.css — Gweb DANFE Simplificada
+   Estilos de suporte para o botão injetado no menu Angular Material.
+   Os estilos de impressão ficam no HTML gerado (não aqui). */
+
+/* Garante que o botão injetado herde o estilo do tema Angular Material */
+button.mat-menu-item[class*="danfe"],
+button.mat-mdc-menu-item[class*="danfe"] {
+  color: #1565c0 !important;
+  font-weight: 600 !important;
+}
+
+/* Hover sobre o botão DANFE */
+button.mat-menu-item[class*="danfe"]:hover,
+button.mat-mdc-menu-item[class*="danfe"]:hover {
+  background-color: rgba(21, 101, 192, 0.08) !important;
+}

@@ -1,0 +1,11 @@
+{
+  "name": "gweb-tools",
+  "version": "1.0.0",
+  "description": "Extensão Chrome unificada: Comissões + DANFE Simplificada para GDOOR Web",
+  "main": "popup.js",
+  "scripts": {},
+  "keywords": ["gdoor", "chrome-extension", "comissoes", "danfe", "nfe"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

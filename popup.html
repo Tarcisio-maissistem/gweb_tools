@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=460">
+  <title>GWeb Comissões</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg:    #09090f;
+      --bg2:   #111120;
+      --bg3:   #1c1c32;
+      --bg4:   #252540;
+      --acc:   #6366f1;
+      --acc2:  #818cf8;
+      --s1:    #f0f0ff;
+      --s2:    #9898b8;
+      --s3:    #55556a;
+      --bord:  #1e1e38;
+      --bord2: #2a2a50;
+      --green: #34d399;
+      --yellow:#fbbf24;
+      --red:   #f87171;
+      --blue:  #60a5fa;
+      --radius: 10px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 460px;
+      min-height: 520px;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--s1);
+      overflow-x: hidden;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #1a1a3e 0%, #0f0f2a 60%, #16163a 100%);
+      padding: 18px 20px 16px;
+      border-bottom: 1px solid var(--bord);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 140px; height: 140px;
+      background: radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .header-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--acc), var(--acc2));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.4);
+    }
+
+    .header-text h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: var(--s1);
+    }
+
+    .header-text p {
+      font-size: 11px;
+      color: var(--s2);
+      margin-top: 2px;
+    }
+
+    .header-version {
+      margin-left: auto;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--acc2);
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 20px;
+      padding: 3px 10px;
+      flex-shrink: 0;
+    }
+
+    /* ── URL Warning ── */
+    .url-warning {
+      background: rgba(248,113,113,0.08);
+      border-left: 3px solid var(--red);
+      padding: 10px 16px;
+      margin: 12px 16px 0;
+      border-radius: 0 8px 8px 0;
+      font-size: 11px;
+      color: #fca5a5;
+      display: none;
+    }
+    .url-warning.visible { display: block; }
+
+    /* ── Status Bar ── */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--bord);
+      font-size: 12px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--s3);
+      flex-shrink: 0;
+    }
+    .status-dot.idle   { background: var(--s3); }
+    .status-dot.run    { background: var(--green); animation: pulse 1.2s infinite; }
+    .status-dot.done   { background: var(--acc2); }
+    .status-dot.error  { background: var(--red); }
+    .status-dot.paused { background: var(--yellow); }
+
+    @keyframes pulse {
+      0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52,211,153,.4); }
+      50%      { opacity: .7; box-shadow: 0 0 0 5px rgba(52,211,153,0); }
+    }
+
+    .status-text { color: var(--s2); flex: 1; font-size: 12px; }
+    .status-text strong { color: var(--s1); }
+
+    /* ── Filter ── */
+    .filter-section {
+      padding: 14px 20px 10px;
+      border-bottom: 1px solid var(--bord);
+    }
+
+    .filter-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--s3);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-row input[type="date"] {
+      flex: 1;
+      background: var(--bg3);
+      border: 1px solid var(--bord2);
+      border-radius: 8px;
+      color: var(--s1);
+      padding: 8px 12px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .filter-row input:focus {
+      border-color: var(--acc);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.15);
+    }
+
+    .filter-divider {
+      font-size: 11px;
+      color: var(--s3);
+      flex-shrink: 0;
+    }
+
+    .filter-hint {
+      font-size: 10px;
+      color: var(--s3);
+      margin-top: 7px;
+      line-height: 1.5;
+    }
+
+    /* ── Progress ── */
+    .progress-section {
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--bord);
+      background: var(--bg2);
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--s3);
+      margin-bottom: 6px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 5px;
+      background: var(--bord2);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--acc), var(--acc2));
+      border-radius: 3px;
+      transition: width .4s ease;
+    }
+
+    .timer-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+    }
+
+    .timer-clock {
+      color: var(--acc2);
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 1px;
+    }
+
+    .timer-speed {
+      color: var(--s3);
+      font-size: 10px;
+    }
+
+    /* ── Buttons ── */
+    .buttons {
+      display: flex;
+      gap: 7px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--bord);
+      background: var(--bg);
+    }
+
+    .btn {
+      flex: 1;
+      padding: 9px 4px;
+      border: 1px solid var(--bord2);
+      border-radius: 8px;
+      background: var(--bg3);
+      color: var(--s2);
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      transition: all .18s;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .btn:hover:not(:disabled) {
+      border-color: var(--acc);
+      color: var(--s1);
+      background: rgba(99,102,241,.12);
+    }
+
+    .btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .btn-start {
+      background: linear-gradient(135deg, var(--acc), #4f46e5);
+      border-color: var(--acc);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .btn-start:hover:not(:disabled) {
+      background: linear-gradient(135deg, var(--acc2), var(--acc));
+      color: #fff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(99,102,241,.35);
+    }
+
+    .btn-report {
+      background: rgba(52,211,153,.08);
+      border-color: rgba(52,211,153,.3);
+      color: var(--green);
+      display: none;
+    }
+
+    .btn-report:hover:not(:disabled) {
+      background: rgba(52,211,153,.18);
+      border-color: var(--green);
+      color: var(--green);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(52,211,153,.2);
+    }
+
+    .btn-test {
+      background: rgba(96,165,250,.08);
+      border-color: rgba(96,165,250,.3);
+      color: var(--blue);
+    }
+
+    .btn-test:hover:not(:disabled) {
+      background: rgba(96,165,250,.18);
+      border-color: var(--blue);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(96,165,250,.2);
+    }
+
+    .btn-test:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* ── Cache row ── */
+    .cache-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 20px;
+      border-bottom: 1px solid var(--bord);
+      font-size: 10px;
+      color: var(--s3);
+    }
+
+    .btn-clear-cache {
+      background: none;
+      border: 1px solid var(--bord2);
+      border-radius: 5px;
+      color: var(--s3);
+      font-size: 9px;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      transition: all .15s;
+    }
+
+    .btn-clear-cache:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--bord);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 0;
+      background: none;
+      border: none;
+      color: var(--s3);
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      border-bottom: 2px solid transparent;
+      transition: all .2s;
+    }
+
+    .tab-btn.active {
+      color: var(--acc2);
+      border-bottom-color: var(--acc);
+    }
+
+    .tab-btn:hover:not(.active) { color: var(--s1); }
+
+    .tab-badge {
+      display: inline-block;
+      background: var(--acc);
+      color: #fff;
+      font-size: 8px;
+      padding: 1px 5px;
+      border-radius: 8px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* ── Tab Content ── */
+    .tab-content {
+      height: 200px;
+      overflow-y: auto;
+      padding: 8px 14px;
+      background: var(--bg);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Log ── */
+    .log-entry {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      padding: 4px 0;
+      color: var(--s2);
+      border-bottom: 1px solid rgba(30,30,56,.6);
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .log-entry .log-time {
+      color: var(--s3);
+      margin-right: 6px;
+    }
+
+    .log-entry.error   { color: var(--red); }
+    .log-entry.warn    { color: var(--yellow); }
+    .log-entry.success { color: var(--green); }
+
+    /* ── Summary ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .summary-card {
+      background: var(--bg3);
+      border: 1px solid var(--bord2);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .summary-card .label {
+      font-size: 9px;
+      color: var(--s3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .summary-card .value {
+      font-size: 18px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--s1);
+    }
+
+    /* ── Alerts ── */
+    .alert-item {
+      padding: 8px 10px;
+      border-radius: 7px;
+      margin-bottom: 6px;
+      font-size: 11px;
+      background: rgba(248,113,113,.08);
+      border: 1px solid rgba(248,113,113,.25);
+      color: #fca5a5;
+      line-height: 1.4;
+    }
+
+    .alert-item.warn {
+      background: rgba(251,191,36,.08);
+      border-color: rgba(251,191,36,.25);
+      color: var(--yellow);
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--s3);
+      font-size: 11px;
+    }
+
+    /* ── Scrollbar ── */
+    .tab-content::-webkit-scrollbar { width: 4px; }
+    .tab-content::-webkit-scrollbar-track { background: transparent; }
+    .tab-content::-webkit-scrollbar-thumb { background: var(--bord2); border-radius: 2px; }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 8px 20px;
+      border-top: 1px solid var(--bord);
+      font-size: 10px;
+      color: var(--s3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg2);
+    }
+
+    .footer-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">G</div>
+    <div class="header-text">
+      <h1>GWeb Comissões</h1>
+      <p>Extração por data de conclusão · API direta</p>
+    </div>
+    <div class="header-version">v3.4.0</div>
+  </div>
+
+  <!-- URL Warning -->
+  <div class="url-warning" id="urlWarning">
+    ⚠ Navegue para <strong>app.gdoorweb.com.br</strong> antes de iniciar.
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-dot idle" id="statusDot"></div>
+    <div class="status-text" id="statusText">
+      <strong>Aguardando</strong> — Pronto para iniciar
+    </div>
+  </div>
+
+  <!-- Date Filter -->
+  <div class="filter-section">
+    <div class="filter-label">Período de conclusão</div>
+    <div class="filter-row">
+      <input type="date" id="dateFrom" title="Data inicial">
+      <span class="filter-divider">→</span>
+      <input type="date" id="dateTo" title="Data final">
+    </div>
+    <p class="filter-hint">
+      Pedidos <strong style="color:var(--green)">Concluídos</strong> com "Alterado em" no período.
+      Range expandido em 1 mês automaticamente.
+    </p>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-section">
+    <div class="progress-info">
+      <span id="progressLabel">0 de 0 pedidos</span>
+      <span id="progressPercent">0%</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+    <div class="timer-row">
+      <span class="timer-clock" id="timerClock">00:00</span>
+      <span class="timer-speed" id="timerSpeed"></span>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="buttons">
+    <button class="btn btn-test" id="btnTestApi">🔌 Testar API</button>
+    <button class="btn btn-start" id="btnStart">▶ Iniciar</button>
+    <button class="btn" id="btnPause" disabled>⏸ Pausar</button>
+    <button class="btn" id="btnStop" disabled>⏹ Parar</button>
+    <button class="btn btn-report" id="btnReport">📊 Relatório</button>
+  </div>
+
+  <!-- Cache Info -->
+  <div class="cache-row">
+    <span id="cacheInfo">Cache: carregando...</span>
+    <button id="btnClearCache" class="btn-clear-cache" title="Limpar cache de pedidos">🗑 Limpar Cache</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="log">Log <span class="tab-badge" id="logCount">0</span></button>
+    <button class="tab-btn" data-tab="summary">Resumo</button>
+    <button class="tab-btn" data-tab="alerts">Alertas <span class="tab-badge" id="alertCount">0</span></button>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+    <div class="tab-panel active" id="panelLog">
+      <div class="empty-state" id="logEmpty">Nenhum log ainda. Clique em Iniciar.</div>
+      <div id="logContainer"></div>
+    </div>
+
+    <div class="tab-panel" id="panelSummary">
+      <div class="summary-grid" id="summaryGrid">
+        <div class="summary-card">
+          <div class="label">Pedidos no Período</div>
+          <div class="value" id="sumProcessed">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Total Itens</div>
+          <div class="value" id="sumItems">0</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Valor Total</div>
+          <div class="value" id="sumTotal" style="color:var(--green);font-size:14px">R$ 0,00</div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Páginas API</div>
+          <div class="value" id="sumPages">0</div>
+        </div>
+      </div>
+      <div class="summary-grid" id="sumStats" style="margin-top:7px"></div>
+    </div>
+
+    <div class="tab-panel" id="panelAlerts">
+      <div class="empty-state" id="alertsEmpty">Nenhum alerta.</div>
+      <div id="alertsContainer"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span><span class="footer-dot"></span>Dados locais — nada é enviado externamente</span>
+    <span style="font-family:'JetBrains Mono',monospace">3.4.0</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
