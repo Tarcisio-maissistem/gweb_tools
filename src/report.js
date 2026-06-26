@@ -153,6 +153,13 @@ var ReportGenerator = (function () {
     uniqueDates.forEach(function (d) {
       html += '<option value="' + escapeHtml(d) + '">' + escapeHtml(d) + '</option>';
     });
+    html += '</select>';
+    // Filtro por vendedor — seleciona 1 vendedor p/ ver so a comissao dele
+    html += '<select class="filter-select" id="filterVendedor">';
+    html += '<option value="all">Todos os vendedores</option>';
+    uniqueVendedores.forEach(function (v) {
+      html += '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>';
+    });
     html += '</select></div>';
 
     // ========================= SUMMARY CARDS =========================
@@ -197,8 +204,10 @@ var ReportGenerator = (function () {
       html += '<div class="date-group" data-date="' + escapeHtml(group.date) + '">';
       html += '<div class="date-group-header" style="cursor:pointer">';
       html += '<span>\ud83d\udcc5 ' + escapeHtml(group.date) + '</span>';
-      html += '<span class="group-stats">' + group.orders.length + ' pedidos \u00b7 ' + groupItems + ' itens \u00b7 ' + formatBRL(groupTotal);
-      if (groupComissao > 0) html += ' \u00b7 Comiss\u00e3o: ' + formatBRL(groupComissao);
+      // group-stats-text separado p/ o filtro de vendedor recalcular sem perder o botao
+      var statsTxt = group.orders.length + ' pedidos \u00b7 ' + groupItems + ' itens \u00b7 ' + formatBRL(groupTotal);
+      if (groupComissao > 0) statsTxt += ' \u00b7 Comiss\u00e3o: ' + formatBRL(groupComissao);
+      html += '<span class="group-stats"><span class="group-stats-text">' + statsTxt + '</span>';
       html += ' <button class="expand-btn date-toggle" data-target="' + dgId + '" data-count="' + group.orders.length + '">\u25bc Abrir (' + group.orders.length + ')</button>';
       html += '</span></div>';
       html += '<div class="date-group-body" id="' + dgId + '" style="display:none">';
@@ -215,8 +224,14 @@ var ReportGenerator = (function () {
         var hasItems = order.itens && order.itens.length > 0;
         var hasAlerts = order._alerts && order._alerts.length > 0;
         var sourceLabel = order._source === 'cache' ? '\ud83d\udce6 Cache' : '\ud83c\udf10 P\u00e1gina';
+        // Atributos p/ filtro por vendedor recalcular totais no front
+        var rowVend = order.vendedor || 'Sem vendedor';
+        var rowAttrs = ' class="order-row" data-vendedor="' + escapeHtml(rowVend) + '"'
+          + ' data-total="' + (parseFloat(order.valorTotal) || 0) + '"'
+          + ' data-itens="' + (order.itens ? order.itens.length : 0) + '"'
+          + ' data-comissao="' + (parseFloat(order.comissao) || 0) + '"';
 
-        html += '<tr' + (hasAlerts ? ' style="background:#fff5f5"' : '') + '>';
+        html += '<tr' + rowAttrs + (hasAlerts ? ' style="background:#fff5f5"' : '') + '>';
         html += '<td><strong>' + escapeHtml(order.numeroPedido || order._idLista || order.id) + '</strong>';
         if (hasAlerts) html += ' <span style="color:#c73650" title="Este pedido tem alertas">\u26a0\ufe0f</span>';
         html += '</td>';
@@ -235,7 +250,8 @@ var ReportGenerator = (function () {
         html += '</tr>';
 
         if (hasItems) {
-          html += '<tr class="items-row" id="' + itemsId + '"><td colspan="11" style="padding:0 14px 14px">';
+          // items-row herda o vendedor p/ ser escondida junto da linha do pedido
+          html += '<tr class="items-row" id="' + itemsId + '" data-vendedor="' + escapeHtml(rowVend) + '"><td colspan="11" style="padding:0 14px 14px">';
           html += '<table class="items-subtable"><thead><tr>';
           html += '<th>C\u00f3digo</th><th>Descri\u00e7\u00e3o</th><th style="text-align:right">Qtd</th>';
           html += '<th>Un.</th><th style="text-align:right">Vlr Unit.</th>';
@@ -299,7 +315,7 @@ var ReportGenerator = (function () {
       grandTotal += total;
       grandOrders += qty;
 
-      html += '<div class="vendor-card">';
+      html += '<div class="vendor-card" data-vendedor="' + escapeHtml(group.vendedor) + '">';
       html += '<div class="vendor-card-header">';
       html += '<div class="vendor-card-name">\ud83d\udc64 ' + escapeHtml(group.vendedor) + '</div>';
       html += '<div class="vendor-card-stats">';
