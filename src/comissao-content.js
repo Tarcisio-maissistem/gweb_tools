@@ -2195,89 +2195,72 @@
   // Tenta multiplos endpoints em cascata para obter a lista real de vendedores.
   // =====================================================================
 
-  /**
-   * Tenta extrair nomes de vendedores de uma resposta da API.
-   * Suporta multiplos formatos de resposta do GDOOR.
-   */
-  function extractNamesFromApiResp(resp) {
-    var names = [];
-    var list = resp.data || resp.users || resp.people || resp.sellers || resp;
-    if (!Array.isArray(list)) return names;
-
-    if (list.length > 0) {
-      log('DEBUG FIRST ITEM JSON: ' + JSON.stringify(list[0]), 'info');
-      
-      list.forEach(function (item) {
-        var matchedKeys = [];
-        Object.keys(item).forEach(function (k) {
-          var val = item[k];
-          if (typeof val === 'string' && (val.toLowerCase().indexOf('vendedor') !== -1 || val.toLowerCase().indexOf('seller') !== -1)) {
-            matchedKeys.push(k + ' (string): "' + val + '"');
-          } else if (typeof val === 'boolean' && (k.toLowerCase().indexOf('vendedor') !== -1 || k.toLowerCase().indexOf('seller') !== -1)) {
-            matchedKeys.push(k + ' (boolean): ' + val);
-          } else if (Array.isArray(val)) {
-            val.forEach(function (subVal) {
-              if (typeof subVal === 'string' && (subVal.toLowerCase().indexOf('vendedor') !== -1 || subVal.toLowerCase().indexOf('seller') !== -1)) {
-                matchedKeys.push(k + ' (array string): "' + subVal + '"');
-              } else if (subVal && typeof subVal === 'object') {
-                Object.keys(subVal).forEach(function (sk) {
-                  var sval = subVal[sk];
-                  if (typeof sval === 'string' && (sval.toLowerCase().indexOf('vendedor') !== -1 || sval.toLowerCase().indexOf('seller') !== -1)) {
-                    matchedKeys.push(k + '.' + sk + ' (array obj string): "' + sval + '"');
-                  } else if (typeof sval === 'boolean' && (sk.toLowerCase().indexOf('vendedor') !== -1 || sk.toLowerCase().indexOf('seller') !== -1)) {
-                    matchedKeys.push(k + '.' + sk + ' (array obj boolean): ' + sval);
-                  }
-                });
-              }
-            });
-          } else if (val && typeof val === 'object') {
-            Object.keys(val).forEach(function (sk) {
-              var sval = val[sk];
-              if (typeof sval === 'string' && (sval.toLowerCase().indexOf('vendedor') !== -1 || sval.toLowerCase().indexOf('seller') !== -1)) {
-                matchedKeys.push(k + '.' + sk + ' (obj string): "' + sval + '"');
-              } else if (typeof sval === 'boolean' && (sk.toLowerCase().indexOf('vendedor') !== -1 || sk.toLowerCase().indexOf('seller') !== -1)) {
-                matchedKeys.push(k + '.' + sk + ' (obj boolean): ' + sval);
-              }
-            });
-          }
-        });
-        if (matchedKeys.length > 0) {
-          log('DEBUG MATCH FOR ' + (item.name || item.nome || 'unnamed') + ': ' + matchedKeys.join(' | '), 'info');
-        }
-      });
+  /** Considera "vendedor" so quem tem a marcacao is_seller (mesmo checkbox do cadastro). */
+  function isSellerItem(item) {
+    if (!item || typeof item !== 'object') return false;
+    // chaves booleanas possiveis p/ a marcacao de vendedor no GDOOR
+    var keys = ['is_seller', 'isSeller', 'seller', 'vendedor', 'is_vendedor'];
+    for (var i = 0; i < keys.length; i++) {
+      var v = item[keys[i]];
+      if (v === true || v === 1 || v === '1' || v === 'true') return true;
     }
+    return false;
+  }
 
+  /**
+   * Extrai nomes APENAS das pessoas marcadas como vendedor (is_seller).
+   * Retorna { names, hadFlag } — hadFlag indica se a resposta expoe a flag is_seller.
+   */
+  function extractSellerNames(resp) {
+    var list = resp.data || resp.people || resp.users || resp.sellers || resp;
+    if (!Array.isArray(list)) return { names: [], hadFlag: false };
+
+    // a resposta expoe a marcacao de vendedor em algum item?
+    var hadFlag = list.some(function (it) {
+      return it && typeof it === 'object' && (
+        'is_seller' in it || 'isSeller' in it || 'seller' in it ||
+        'vendedor' in it || 'is_vendedor' in it
+      );
+    });
+
+    var names = [];
     list.forEach(function (item) {
-      var name = item.name || item.nome || item.username || item.login
-               || item.full_name || item.display_name || '';
+      // quando a flag existe, filtra so vendedores; senao mantem (ex: endpoint de users)
+      if (hadFlag && !isSellerItem(item)) return;
+      var name = item.name || item.nome || item.full_name || item.display_name
+               || item.username || item.login || '';
       if (name && name.trim()) names.push(name.trim());
     });
-    return names;
+    return { names: names, hadFlag: hadFlag };
   }
 
   /**
    * Busca lista de vendedores do GDOOR Web via API.
+   * Vendedor = pessoa com is_seller marcado (mesmo checkbox do cadastro).
    * Estrategias em cascata:
-   *   1. GET /v1/users?limit=200         (usuarios do sistema)
-   *   2. GET /v1/people?filter.type=S&limit=200  (tipo Seller)
-   *   3. GET /v1/people?limit=200        (todas as pessoas)
-   *   4. Fallback: varre 1a pagina de pedidos recentes e coleta created_by unicos
+   *   1. GET /v1/people?filter.is_seller=true   (filtro server-side)
+   *   2. GET /v1/people?limit=200               (todas + filtro is_seller no cliente)
+   *   3. Fallback: varre pedidos recentes e coleta created_by unicos
    */
   async function fetchVendorList() {
     var endpoints = [
-      '/v1/users?limit=200',
-      '/v1/people?filter.type=S&limit=200',
+      '/v1/people?filter.is_seller=true&limit=200',
+      '/v1/people?is_seller=true&limit=200',
       '/v1/people?limit=200'
     ];
 
     for (var i = 0; i < endpoints.length; i++) {
       try {
         var resp = await apiFetch(endpoints[i]);
-        var names = extractNamesFromApiResp(resp);
-        if (names.length > 0) {
-          names = deduplicateAndSort(names);
-          log('Vendedores carregados via ' + endpoints[i] + ': ' + names.length + ' encontrados');
+        var res = extractSellerNames(resp);
+        // so aceita se a resposta expoe is_seller (garante que filtrou vendedores)
+        if (res.hadFlag && res.names.length > 0) {
+          var names = deduplicateAndSort(res.names);
+          log('Vendedores (is_seller) carregados via ' + endpoints[i] + ': ' + names.length + ' encontrados');
           return { ok: true, vendors: names, source: endpoints[i] };
+        }
+        if (res.names.length > 0 && !res.hadFlag) {
+          log('Endpoint ' + endpoints[i] + ' nao expoe is_seller — ignorado p/ evitar trazer todas as pessoas', 'warn');
         }
       } catch (e) {
         // Tenta proximo endpoint
